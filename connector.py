@@ -60,19 +60,27 @@ class Match:
         return dict([(dasherize(k), v) for (k, v) in dictionary.items()])
 
 
-class GetTMUnit(MethodView):
-    def get(self):
-        access_token = requests.post(f"{HOST}/api/v1/auth",
-                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
-        data = flask_request.get_json()
-        q = data['q']
-        langpair = data['langpair']
+class TMView(MethodView):
+    def get_access_token(self):
+        return requests.post(f"{HOST}/api/v1/auth",
+                             json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+
+    def parse_langpair(self, langpair):
         if '|' in langpair:
             slang = langpair.split('|')[0].split('-')[0]
             tlang = langpair.split('|')[1].split('-')[0]
         else:
             slang = langpair.split('-')[0]
             tlang = langpair.split('-')[1]
+        return slang, tlang
+
+
+class GetTMUnit(TMView):
+    def get(self):
+        access_token = self.get_access_token()
+        data = flask_request.get_json()
+        q = data['q']
+        slang, tlang = self.parse_langpair(data['langpair'])
         result_response = requests.get(f"{HOST}/api/v1/tm",
                                        headers={"Authorization": f"JWT {access_token}",
                                                 "Content-Type": "application/json"},
@@ -90,11 +98,8 @@ class GetTMUnit(MethodView):
         return return_blob.getDict()
 
 
-class AddTMUnit(MethodView):
-    @staticmethod
-    def add_tag(tag="public"):
-        access_token = requests.post(f"{HOST}/api/v1/auth",
-                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+class AddTMUnit(TMView):
+    def add_tag(self, access_token, tag="public"):
         result_response = requests.post(f"{HOST}/api/v1/tags/public",
                                         headers={"Authorization": f"JWT {access_token}"},
                                         data={"id": tag, "name": tag, "type": tag})
@@ -102,19 +107,12 @@ class AddTMUnit(MethodView):
         return {"responseStatus": 200, "responseData": result_data}
 
     def post(self):
-        AddTMUnit.add_tag()
-        access_token = requests.post(f"{HOST}/api/v1/auth",
-                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+        access_token = self.get_access_token()
+        self.add_tag(access_token)
         data = flask_request.form
         source = data['seg']
         target = data['tra']
-        langpair = data['langpair']
-        if '|' in langpair:
-            slang = langpair.split('|')[0].split('-')[0]
-            tlang = langpair.split('|')[1].split('-')[0]
-        else:
-            slang = langpair.split('-')[0]
-            tlang = langpair.split('-')[1]
+        slang, tlang = self.parse_langpair(data['langpair'])
         result_response = requests.post(f"{HOST}/api/v1/tm",
                                         headers={"Authorization": f"JWT {access_token}"},
                                         data={"stext": source, "ttext": target, "slang": slang, "tlang": tlang,
