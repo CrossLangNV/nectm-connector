@@ -6,8 +6,8 @@
 # NECTM source code :    https://github.com/Pangeamt/nectm/
 from inflection import dasherize
 import flask
-from requests import post, get
-from flask import request, jsonify
+import requests
+from flask import request as flask_request
 from flask.views import MethodView
 
 HOST = 'http://nectm:7979'
@@ -61,11 +61,11 @@ class Match:
         return dict([(dasherize(k), v) for (k, v) in dictionary.items()])
 
 
-class TmView(MethodView):
+class GetTMUnit(MethodView):
     def get(self):
-        access_token = post(f"{HOST}/api/v1/auth", json={'username': USERNAME, 'password': PASSWORD}).json()[
-            'access_token']
-        data = request.get_json()
+        access_token = requests.post(f"{HOST}/api/v1/auth",
+                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+        data = flask_request.get_json()
         q = data['q']
         langpair = data['langpair']
         if '|' in langpair:
@@ -74,26 +74,49 @@ class TmView(MethodView):
         else:
             slang = langpair.split('-')[0]
             tlang = langpair.split('-')[1]
-        result_response = get(f"{HOST}/api/v1/tm",
-                              headers={"Authorization": f"JWT {access_token}", "Content-Type": "application/json"},
-                              json={"q": q, "slang": slang, "tlang": tlang})
+        result_response = requests.get(f"{HOST}/api/v1/tm",
+                                       headers={"Authorization": f"JWT {access_token}",
+                                                "Content-Type": "application/json"},
+                                       json={"q": q, "slang": slang, "tlang": tlang})
         result_data = result_response.json()
         matches = []
         if len(result_data['results']):
             results = result_data['results']
             if not results[0]['tu']['source_text'] == " ":
                 for result in results:
-                    # sanity check
-                    assert q == result['tu']['source_text']
-                    match = Match(id=str(results.index(result)), segment=q, reference=q,
+                    match = Match(id=str(results.index(result)), segment=result['tu']['source_text'], reference=q,
                                   translation=result['tu']['target_text'], match=float(result['match'] / 100)).getDict()
                     matches.append(match)
         return_blob = MatecatReponse(matches=matches)
         return return_blob.getDict()
 
 
-tm_view = TmView.as_view('tm_api')
-app.add_url_rule('/get/', methods=['GET'], view_func=tm_view)
+class AddTMUnit(MethodView):
+    def post(self):
+        access_token = requests.post(f"{HOST}/api/v1/auth",
+                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+        data = flask_request.form
+        source = data['seg']
+        target = data['tra']
+        langpair = data['langpair']
+        if '|' in langpair:
+            slang = langpair.split('|')[0].split('-')[0]
+            tlang = langpair.split('|')[1].split('-')[0]
+        else:
+            slang = langpair.split('-')[0]
+            tlang = langpair.split('-')[1]
+        result_response = requests.post(f"{HOST}/api/v1/tm",
+                                        headers={"Authorization": f"JWT {access_token}"},
+                                        data={"stext": source, "ttext": target, "slang": slang, "tlang": tlang,
+                                              "tag": "public"})
+        result_data = result_response.json()
+        return {"responseStatus": 200, "responseData": result_data}
+
+
+get_tm_unit = GetTMUnit.as_view('tm_get')
+add_tm_unit = AddTMUnit.as_view('tm_post')
+app.add_url_rule('/get/', methods=['GET'], view_func=get_tm_unit)
+app.add_url_rule('/set/', methods=['POST'], view_func=add_tm_unit)
 
 if __name__ == "__main__":
     app.config["DEBUG"] = True
