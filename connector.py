@@ -34,8 +34,7 @@ class MatecatReponse:
     # method to convert the snake_case of instance variables to json standard of kebab-case expected by MateCat (kebab-case raises assign errors in Python)
     def getDict(self):
         dictionary = self.__dict__
-        return dict([(dasherize(k), v)
-                     for (k, v) in dictionary.items()])
+        return dict([(dasherize(k), v) for (k, v) in dictionary.items()])
 
 
 class Match:
@@ -92,7 +91,18 @@ class GetTMUnit(MethodView):
 
 
 class AddTMUnit(MethodView):
+    @staticmethod
+    def add_tag(tag="public"):
+        access_token = requests.post(f"{HOST}/api/v1/auth",
+                                     json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
+        result_response = requests.post(f"{HOST}/api/v1/tags/public",
+                                        headers={"Authorization": f"JWT {access_token}"},
+                                        data={"id": tag, "name": tag, "type": tag})
+        result_data = result_response.json()
+        return {"responseStatus": 200, "responseData": result_data}
+
     def post(self):
+        AddTMUnit.add_tag()
         access_token = requests.post(f"{HOST}/api/v1/auth",
                                      json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
         data = flask_request.form
