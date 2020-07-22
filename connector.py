@@ -105,7 +105,7 @@ class GetTMUnit(TMView):
         return self.find_tm_unit(flask_request.form)
 
 
-class AddTMUnit(TMView):
+class UpdateTMUnit(TMView):
     def add_tag(self, access_token, tag="public"):
         result_response = requests.post(f"{HOST}/api/v1/tags/public",
                                         headers={"Authorization": f"JWT {access_token}"},
@@ -158,10 +158,10 @@ class AnalyzeSegments(MethodView):
 
 
 get_tm_unit = GetTMUnit.as_view('tm_get')
-add_tm_unit = AddTMUnit.as_view('tm_post')
+update_tm_unit = UpdateTMUnit.as_view('tm_update')
 analyze_segments = AnalyzeSegments.as_view('analyze')
 app.add_url_rule('/get', methods=['GET', 'POST'], view_func=get_tm_unit)
-app.add_url_rule('/set', methods=['POST'], view_func=add_tm_unit)
+app.add_url_rule('/update', methods=['POST'], view_func=update_tm_unit)
 app.add_url_rule('/analyze', methods=['POST'], view_func=analyze_segments)
 
 if __name__ == "__main__":
