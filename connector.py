@@ -4,16 +4,19 @@
 #                     - https://www.nec-tm.eu/wp-content/uploads/2020/03/NEC-TM-Admin-UI-description.pdf
 #                     - https://www.nec-tm.eu/wp-content/uploads/2020/03/NEC-TM-Technical-description.pdf
 # NECTM source code :    https://github.com/Pangeamt/nectm/
-from inflection import dasherize
+
+import ast
+import os
+
 import flask
 import requests
-import ast
 from flask import request as flask_request
 from flask.views import MethodView
+from inflection import dasherize
 
-HOST = 'http://nectm:7979'
-USERNAME = 'admin'
-PASSWORD = 'admin'
+NECTM_URL = os.environ.get('NECTM_URL', 'http://nectm:7979')
+USERNAME = os.environ.get('USERNAME', 'admin')
+PASSWORD = os.environ.get('PASSWORD', 'admin')
 
 app = flask.Flask(__name__)
 app.url_map.strict_slashes = False
@@ -64,7 +67,7 @@ class Match:
 
 class TMView(MethodView):
     def get_access_token(self):
-        return requests.post(f"{HOST}/api/v1/auth",
+        return requests.post(f"{NECTM_URL}/api/v1/auth",
                              json={'username': USERNAME, 'password': PASSWORD}).json()['access_token']
 
     def parse_langpair(self, langpair):
@@ -82,7 +85,7 @@ class GetTMUnit(TMView):
         access_token = self.get_access_token()
         q = data['q']
         slang, tlang = self.parse_langpair(data['langpair'])
-        result_response = requests.get(f"{HOST}/api/v1/tm",
+        result_response = requests.get(f"{NECTM_URL}/api/v1/tm",
                                        headers={"Authorization": f"JWT {access_token}",
                                                 "Content-Type": "application/json"},
                                        json={"q": q, "slang": slang, "tlang": tlang})
@@ -107,7 +110,7 @@ class GetTMUnit(TMView):
 
 class UpdateTMUnit(TMView):
     def add_tag(self, access_token, tag="public"):
-        result_response = requests.post(f"{HOST}/api/v1/tags/public",
+        result_response = requests.post(f"{NECTM_URL}/api/v1/tags/public",
                                         headers={"Authorization": f"JWT {access_token}"},
                                         data={"id": tag, "name": tag, "type": tag})
         result_data = result_response.json()
@@ -120,7 +123,7 @@ class UpdateTMUnit(TMView):
         source = data['seg']
         target = data['tra']
         slang, tlang = self.parse_langpair(data['langpair'])
-        result_response = requests.post(f"{HOST}/api/v1/tm",
+        result_response = requests.post(f"{NECTM_URL}/api/v1/tm",
                                         headers={"Authorization": f"JWT {access_token}"},
                                         data={"stext": source, "ttext": target, "slang": slang, "tlang": tlang,
                                               "tag": "public"})
