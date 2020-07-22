@@ -16,6 +16,7 @@ USERNAME = 'admin'
 PASSWORD = 'admin'
 
 app = flask.Flask(__name__)
+app.url_map.strict_slashes = False
 
 
 # access_token = post(f"{HOST}/api/v1/auth", json={'username': USERNAME,'password': PASSWORD}).json()['access_token']
@@ -77,9 +78,8 @@ class TMView(MethodView):
 
 
 class GetTMUnit(TMView):
-    def get(self):
+    def find_tm_unit(self, data):
         access_token = self.get_access_token()
-        data = flask_request.args
         q = data['q']
         slang, tlang = self.parse_langpair(data['langpair'])
         result_response = requests.get(f"{HOST}/api/v1/tm",
@@ -97,6 +97,12 @@ class GetTMUnit(TMView):
                     matches.append(match)
         return_blob = MatecatReponse(matches=matches)
         return return_blob.getDict()
+
+    def get(self):
+        return self.find_tm_unit(flask_request.args)
+
+    def post(self):
+        return self.find_tm_unit(flask_request.form)
 
 
 class AddTMUnit(TMView):
@@ -154,9 +160,9 @@ class AnalyzeSegments(MethodView):
 get_tm_unit = GetTMUnit.as_view('tm_get')
 add_tm_unit = AddTMUnit.as_view('tm_post')
 analyze_segments = AnalyzeSegments.as_view('analyze')
-app.add_url_rule('/get/', methods=['GET'], view_func=get_tm_unit)
-app.add_url_rule('/set/', methods=['POST'], view_func=add_tm_unit)
-app.add_url_rule('/analyze/', methods=['POST'], view_func=analyze_segments)
+app.add_url_rule('/get', methods=['GET', 'POST'], view_func=get_tm_unit)
+app.add_url_rule('/set', methods=['POST'], view_func=add_tm_unit)
+app.add_url_rule('/analyze', methods=['POST'], view_func=analyze_segments)
 
 if __name__ == "__main__":
     app.config["DEBUG"] = True
