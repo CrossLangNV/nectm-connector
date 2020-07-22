@@ -7,6 +7,7 @@
 from inflection import dasherize
 import flask
 import requests
+import ast
 from flask import request as flask_request
 from flask.views import MethodView
 
@@ -121,10 +122,41 @@ class AddTMUnit(TMView):
         return {"responseStatus": 200, "responseData": result_data}
 
 
+class AnalyzeSegments(MethodView):
+    def analyze_segment(self, segment):
+        wc = len(segment['segment'].split())
+        return {"jsid": segment['jsid'], "wc": wc}
+
+    def output(self, analyzed_segments):
+        response = {"responseData": "OK", "responseStatus": 200, "data": {}}
+        for segment in analyzed_segments:
+            response['data'][segment['jsid']] = {"type": "No_match", "wc": segment['wc']}
+        return response
+
+    def post(self):
+        data = flask_request.form
+        segments_str = data['segs']
+        segments = ast.literal_eval(segments_str)
+        analyzed_segments = []
+        if isinstance(segments, dict):
+            for key in segments:
+                analyzed_segment = self.analyze_segment(segments[key])
+                analyzed_segments.append(analyzed_segment)
+        elif isinstance(segments, list):
+            for segment in segments:
+                analyzed_segment = self.analyze_segment(segment)
+                analyzed_segments.append(analyzed_segment)
+        else:
+            raise ValueError('Could not parse segments for analysis')
+        return self.output(analyzed_segments)
+
+
 get_tm_unit = GetTMUnit.as_view('tm_get')
 add_tm_unit = AddTMUnit.as_view('tm_post')
+analyze_segments = AnalyzeSegments.as_view('analyze')
 app.add_url_rule('/get/', methods=['GET'], view_func=get_tm_unit)
 app.add_url_rule('/set/', methods=['POST'], view_func=add_tm_unit)
+app.add_url_rule('/analyze/', methods=['POST'], view_func=analyze_segments)
 
 if __name__ == "__main__":
     app.config["DEBUG"] = True
