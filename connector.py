@@ -79,7 +79,7 @@ class TMView(MethodView):
 class GetTMUnit(TMView):
     def get(self):
         access_token = self.get_access_token()
-        data = flask_request.get_json()
+        data = flask_request.args
         q = data['q']
         slang, tlang = self.parse_langpair(data['langpair'])
         result_response = requests.get(f"{HOST}/api/v1/tm",
