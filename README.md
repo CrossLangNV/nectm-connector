@@ -16,6 +16,16 @@ The following environment variables can be set for NEC-TM:
 
 If they are not set, default values are used that work in the given docker-compose setup.
 
+## Build and run
+
+### Development
+
+Use the included `docker-compose.yml` file.
+
+### Production
+
+Build and tag the docker image: `docker build -f Dockerfile.prod -t nectm-connector .`.
+
 ## API
 
 ![overview](./redirect_nectm.png)
